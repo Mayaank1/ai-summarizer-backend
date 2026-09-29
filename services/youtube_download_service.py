@@ -4,15 +4,44 @@ Single Responsibility: Download video and/or subtitles with full fallback chain.
 Used by both summarization (TranscriptService) and clip generation (VideoSummarizer).
 """
 import glob
+import os
+import shutil
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple
 
 import yt_dlp
 
+from config import Config
 from logger import get_logger
 
 logger = get_logger()
+
+_cookie_copy: Optional[str] = None
+
+
+def _get_cookie_file() -> Optional[str]:
+    """
+    Writable copy of the configured cookies file, or None if not configured.
+    yt-dlp writes cookies back on exit, and Render secret files are read-only.
+    """
+    global _cookie_copy
+    if _cookie_copy and os.path.isfile(_cookie_copy):
+        return _cookie_copy
+    source = Config.YTDLP_COOKIES_FILE
+    if not source or not os.path.isfile(source):
+        return None
+    _cookie_copy = os.path.join(tempfile.gettempdir(), "yt_cookies.txt")
+    shutil.copyfile(source, _cookie_copy)
+    logger.info("Using YouTube cookies from %s", source)
+    return _cookie_copy
+
+
+def with_cookies(ydl_opts: dict) -> dict:
+    """Add the YouTube cookie file to yt-dlp options when one is configured."""
+    cookie_file = _get_cookie_file()
+    return {**ydl_opts, "cookiefile": cookie_file} if cookie_file else ydl_opts
 
 
 def download_youtube(
@@ -71,7 +100,7 @@ def _download_video_with_subs(
         "no_warnings": True,
     }
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(with_cookies(ydl_opts)) as ydl:
             logger.info("Downloading video and subtitles...")
             info = ydl.extract_info(url, download=True)
             video_path = base_filename.with_suffix(f".{info['ext']}")
@@ -99,7 +128,7 @@ def _download_video_only(
         "no_warnings": True,
     }
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(with_cookies(ydl_opts)) as ydl:
             logger.info("Downloading video only (subtitle fallback)...")
             info = ydl.extract_info(url, download=True)
             video_path = base_filename.with_suffix(f".{info['ext']}")
@@ -132,7 +161,7 @@ def fetch_youtube_metadata(url: str) -> Tuple[Optional[float], Optional[str]]:
         "skip_download": True,
     }
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(with_cookies(ydl_opts)) as ydl:
             info = ydl.extract_info(url, download=False)
             return info.get("duration"), info.get("title")
     except Exception as e:

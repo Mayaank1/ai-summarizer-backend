@@ -1,6 +1,6 @@
 Flask
 flask_cors
-yt-dlp
+yt-dlp[default,curl-cffi]
 moviepy
 google-generativeai
 python-dotenv

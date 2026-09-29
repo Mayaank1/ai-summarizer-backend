@@ -5,6 +5,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
+# Deno: JS runtime yt-dlp uses to solve YouTube's player challenges
+COPY --from=denoland/deno:bin /deno /usr/local/bin/deno
+
 ENV PYTHONUNBUFFERED=1 \
     PORT=10000
 WORKDIR /app

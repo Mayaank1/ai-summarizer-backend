@@ -19,6 +19,8 @@ class Config:
     DOWNLOADS_FOLDER: str = os.getenv("DOWNLOADS_FOLDER", "downloads")
     ALLOWED_EXTENSIONS: set = frozenset({"mp4"})
     BASE_URL: str = os.getenv("BASE_URL", "http://localhost:5000")
+    # Netscape-format YouTube cookies so yt-dlp isn't bot-blocked on cloud hosts (Render secret files mount here)
+    YTDLP_COOKIES_FILE: str = os.getenv("YTDLP_COOKIES_FILE", "/etc/secrets/cookies.txt")
 
     SUMMARY_PROMPT: str = (
         "You are a YouTube video summarizer. Summarize the transcript below in at least 200 words. "

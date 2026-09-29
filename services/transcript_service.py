@@ -17,7 +17,7 @@ import google.generativeai as genai
 from config import Config
 from logger import get_logger
 from .interfaces import TranscriptProvider
-from .youtube_download_service import download_youtube
+from .youtube_download_service import download_youtube, with_cookies
 
 logger = get_logger()
 
@@ -88,7 +88,7 @@ class TranscriptService(TranscriptProvider):
             "quiet": True,
         }
         try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            with yt_dlp.YoutubeDL(with_cookies(ydl_opts)) as ydl:
                 result = ydl.extract_info(url, download=True)
                 vid = result.get("id", "")
                 # yt-dlp saves as {outtmpl}.{lang}.{ext} e.g. downloads/abc123.en.srt
@@ -122,7 +122,7 @@ class TranscriptService(TranscriptProvider):
             "quiet": True,
         }
         try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            with yt_dlp.YoutubeDL(with_cookies(ydl_opts)) as ydl:
                 result = ydl.extract_info(url, download=True)
                 vid = result.get("id", "")
                 for ext in [".en.srt", ".en.vtt", ".srt"]:
