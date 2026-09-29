@@ -1,0 +1,19 @@
+# Secrets
+.env
+.env.*
+!.env.example
+cookie.txt
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+env/
+
+# Runtime data
+downloads/
+output/
+uploads/
+summary*.txt
+*.log

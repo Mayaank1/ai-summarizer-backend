@@ -1,0 +1,12 @@
+Flask
+flask_cors
+yt-dlp
+moviepy
+google-generativeai
+python-dotenv
+chardet
+pysrt
+sentence-transformers
+scikit-learn
+scenedetect[opencv]
+gunicorn
