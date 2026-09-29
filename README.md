@@ -1,16 +1,6 @@
----
-title: AI Summarizer Backend
-emoji: 🎬
-colorFrom: indigo
-colorTo: purple
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 # AI Summarizer Backend
 
-Flask API that summarizes YouTube videos / uploaded MP4s with Google Gemini, answers follow-up questions about the summary, and generates highlight clips using embedding-based key-moment detection.
+Flask API that summarizes YouTube videos / uploaded MP4s with Google Gemini, answers follow-up questions about the summary, and generates highlight clips using embedding-based key-moment detection (Gemini embeddings + TextRank).
 
 Frontend: [ai-summarizer-frontend](https://github.com/Mayaank1/ai-summarizer-frontend)
 
@@ -30,8 +20,9 @@ Frontend: [ai-summarizer-frontend](https://github.com/Mayaank1/ai-summarizer-fro
 | Name | Required | Description |
 |---|---|---|
 | `GENAI_API_KEY` | yes | Gemini API key from https://aistudio.google.com/apikey |
-| `BASE_URL` | yes (deployed) | Public URL of this server, used to build clip links, e.g. `https://<hf-user>-ai-summarizer-backend.hf.space` |
+| `BASE_URL` | yes (deployed) | Public URL of this server, used to build clip links, e.g. `https://ai-summarizer-backend.onrender.com` |
 | `GEMINI_MODEL` | no | Defaults to `gemini-2.5-pro` |
+| `EMBEDDING_MODEL` | no | Defaults to `models/gemini-embedding-001` |
 
 See [config.py](config.py) for the rest.
 
@@ -47,15 +38,10 @@ python main.py                # http://127.0.0.1:5000
 
 Requires `ffmpeg` on PATH.
 
-## Deploy to Hugging Face Spaces
+## Deploy to Render (free)
 
-1. Create a Space at https://huggingface.co/new-space: name `ai-summarizer-backend`, SDK **Docker**, blank template, free CPU hardware.
-2. In the Space's **Settings → Variables and secrets**, add secret `GENAI_API_KEY` and variable `BASE_URL` (`https://<hf-user>-ai-summarizer-backend.hf.space`).
-3. Push this repo to the Space, either directly:
-   ```bash
-   git remote add space https://huggingface.co/spaces/<hf-user>/ai-summarizer-backend
-   git push space main
-   ```
-   or automatically on every push to GitHub via the included workflow: add a GitHub repo secret `HF_TOKEN` (a Hugging Face write token) and a repo variable `HF_SPACE` (`<hf-user>/ai-summarizer-backend`).
+1. At https://dashboard.render.com choose **New → Blueprint** and connect this repo. Render reads [render.yaml](render.yaml) and creates a free Docker web service.
+2. When prompted, set `GENAI_API_KEY`, and set `BASE_URL` to the service URL (e.g. `https://ai-summarizer-backend.onrender.com`).
+3. Every push to `main` redeploys automatically.
 
-The free Space sleeps after 48 hours without traffic and wakes on the next request. Its disk is ephemeral, so generated clips and chat sessions are lost on restart.
+Free-tier limits: 512 MB RAM, the service sleeps after 15 minutes idle (first request afterwards takes ~1 minute), and the disk is ephemeral, so generated clips and chat sessions are lost on restart. Very long clip jobs may run out of memory.

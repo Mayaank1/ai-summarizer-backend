@@ -32,7 +32,8 @@ class Config:
     )
 
     # Embedding-based key moment detection
-    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "models/gemini-embedding-001")
+    EMBEDDING_DIMENSIONS: int = int(os.getenv("EMBEDDING_DIMENSIONS", "768"))
     SNAP_TO_SCENE_CUTS: bool = os.getenv("SNAP_TO_SCENE_CUTS", "true").lower() in ("true", "1", "yes")
     # Gemini-derived topic for clip key-moment relevance (title + opening transcript excerpt)
     TOPIC_USE_GEMINI: bool = os.getenv("TOPIC_USE_GEMINI", "true").lower() in ("true", "1", "yes")
@@ -42,7 +43,7 @@ class Config:
 
     # Bottleneck mitigations
     MAX_PROCESSING_TIMEOUT: int = int(os.getenv("MAX_PROCESSING_TIMEOUT", "300"))  # 5 min (URL/file summarize)
-    # Clip pipeline: HF model load + embeddings on hundreds of subtitle segments + MoviePy can exceed 5 min.
+    # Clip pipeline: embeddings on hundreds of subtitle segments + MoviePy can exceed 5 min.
     CLIP_GENERATION_TIMEOUT: int = int(os.getenv("CLIP_GENERATION_TIMEOUT", str(2 * 60 * 60)))  # 2 hours
     CLIP_MIN_SECONDS: int = int(os.getenv("CLIP_MIN_SECONDS", "10"))
     CLIP_MAX_SECONDS: int = int(os.getenv("CLIP_MAX_SECONDS", "600"))

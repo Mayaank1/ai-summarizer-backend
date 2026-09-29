@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: ai-summarizer-backend
+    runtime: docker
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: GENAI_API_KEY
+        sync: false
+      - key: BASE_URL
+        sync: false

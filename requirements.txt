@@ -6,7 +6,7 @@ google-generativeai
 python-dotenv
 chardet
 pysrt
-sentence-transformers
-scikit-learn
-scenedetect[opencv]
+numpy
+scenedetect
+opencv-python-headless
 gunicorn

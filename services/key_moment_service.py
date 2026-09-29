@@ -1,33 +1,48 @@
 """
 Embedding-based key moment detection.
-Uses sentence embeddings + TextRank for semantic importance scoring.
+Uses Gemini embeddings + TextRank for semantic importance scoring.
 """
 from typing import List, Optional, Tuple
 
+import google.generativeai as genai
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
 
 from config import Config
 from logger import get_logger
+from .gemini_retry import with_gemini_retry
 
 logger = get_logger()
 
-# Lazy-loaded model
-_model = None
+# Gemini batchEmbedContents accepts at most 100 texts per request
+_EMBED_BATCH_SIZE = 100
 
 
-def _get_embedding_model():
-    global _model
-    if _model is None:
-        try:
-            from sentence_transformers import SentenceTransformer
-            model_name = getattr(Config, "EMBEDDING_MODEL", "all-MiniLM-L6-v2")
-            _model = SentenceTransformer(model_name)
-            logger.info("Loaded embedding model: %s", model_name)
-        except ImportError as e:
-            logger.error("sentence-transformers not installed: %s", e)
-            raise
-    return _model
+@with_gemini_retry
+def _embed_batch(texts: List[str]) -> List[List[float]]:
+    result = genai.embed_content(
+        model=Config.EMBEDDING_MODEL,
+        content=texts,
+        task_type="semantic_similarity",
+        output_dimensionality=Config.EMBEDDING_DIMENSIONS,
+    )
+    return result["embedding"]
+
+
+def _embed(texts: List[str]) -> np.ndarray:
+    """Embed texts via the Gemini API (no local model, keeps memory low)."""
+    genai.configure(api_key=Config.GENAI_API_KEY)
+    vectors = []
+    for i in range(0, len(texts), _EMBED_BATCH_SIZE):
+        vectors.extend(_embed_batch(texts[i:i + _EMBED_BATCH_SIZE]))
+    return np.asarray(vectors, dtype=np.float32)
+
+
+def cosine_similarity(a: np.ndarray, b: Optional[np.ndarray] = None) -> np.ndarray:
+    """Pairwise cosine similarity between rows of a and rows of b (defaults to a)."""
+    b = a if b is None else b
+    a_norm = a / np.clip(np.linalg.norm(a, axis=1, keepdims=True), 1e-12, None)
+    b_norm = b / np.clip(np.linalg.norm(b, axis=1, keepdims=True), 1e-12, None)
+    return a_norm @ b_norm.T
 
 
 def _compute_textrank_scores(embeddings: np.ndarray) -> np.ndarray:
@@ -88,13 +103,12 @@ def select_key_moments(
     if not texts:
         return []
 
-    model = _get_embedding_model()
-    embeddings = model.encode(texts, show_progress_bar=False)
+    embeddings = _embed(texts)
 
     # Importance scores: TextRank + optional topic boost
     scores = _compute_textrank_scores(embeddings)
     if topic and topic.strip():
-        topic_emb = model.encode([topic.strip()], show_progress_bar=False)
+        topic_emb = _embed([topic.strip()])
         topic_sc = _compute_topic_relevance_scores(embeddings, topic_emb)
         scores = 0.6 * scores + 0.4 * (topic_sc / (topic_sc.max() or 1))
 
