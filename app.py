@@ -10,7 +10,6 @@ from typing import List, Optional, Tuple
 
 import chardet
 import pysrt
-from moviepy import VideoFileClip, concatenate_videoclips
 
 from config import Config
 from logger import get_logger
@@ -228,45 +227,56 @@ class VideoSummarizer:
             return sorted(optimized, key=lambda x: x[0])
 
     def _build_highlight_video(self, video_path: Path, regions: List[Tuple[float, float]], output_filename: str) -> Optional[Path]:
-        """Concatenate selected regions into single highlight video file."""
-        try:
-            if not regions:
-                logger.error("No regions to process")
-                return None
-
-            logger.info("Creating video summary...")
-            with VideoFileClip(str(video_path)) as video:
-                clips = []
-                for start, end in regions:
-                    try:
-                        clip = video.subclipped(start, end)
-                        clips.append(clip)
-                    except Exception as e:
-                        logger.warning(
-                            f"Failed to process clip {start}-{end}: {str(e)}")
-                        continue
-
-                if not clips:
-                    logger.error("No valid clips to concatenate")
-                    return None
-
-                final_clip = concatenate_videoclips(clips)
-                output_path = self.output_dir / output_filename
-
-                logger.info(f"Writing final video to {output_path}")
-                final_clip.write_videofile(
-                    str(output_path),
-                    codec="libx264",
-                    audio_codec="aac",
-                    temp_audiofile=str(self.temp_dir / "temp_audio.m4a"),
-                    remove_temp=True
-                )
-
-                return output_path
-
-        except Exception as e:
-            logger.error(f"Error creating summary video: {str(e)}")
+        """
+        Cut each region with ffmpeg and join them into one highlight video.
+        ffmpeg streams frames itself, so memory stays low (MoviePy decoded frames in Python and ran out of RAM).
+        """
+        if not regions:
+            logger.error("No regions to process")
             return None
+
+        logger.info("Creating video summary...")
+        segment_paths = []
+        for i, (start, end) in enumerate(regions):
+            segment_path = self.temp_dir / f"segment_{i:03d}.mp4"
+            result = subprocess.run(
+                [
+                    "ffmpeg", "-y", "-loglevel", "error",
+                    "-ss", f"{start:.3f}", "-i", str(video_path), "-t", f"{end - start:.3f}",
+                    "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p", "-threads", "2",
+                    "-c:a", "aac", "-ar", "44100", "-ac", "2",
+                    str(segment_path),
+                ],
+                capture_output=True, text=True,
+            )
+            if result.returncode != 0 or not segment_path.exists():
+                logger.warning("Failed to process clip %.1f-%.1f: %s", start, end, result.stderr.strip()[-500:])
+                continue
+            segment_paths.append(segment_path)
+
+        if not segment_paths:
+            logger.error("No valid clips to concatenate")
+            return None
+
+        # All segments share identical encoding settings, so the concat demuxer can join them without re-encoding
+        list_file = self.temp_dir / "segments.txt"
+        list_file.write_text("".join(f"file '{p.as_posix()}'\n" for p in segment_paths), encoding="utf-8")
+        output_path = self.output_dir / output_filename
+
+        logger.info(f"Writing final video to {output_path}")
+        result = subprocess.run(
+            [
+                "ffmpeg", "-y", "-loglevel", "error",
+                "-f", "concat", "-safe", "0", "-i", str(list_file),
+                "-c", "copy", "-movflags", "+faststart",
+                str(output_path),
+            ],
+            capture_output=True, text=True,
+        )
+        if result.returncode != 0 or not output_path.exists():
+            logger.error("Error creating summary video: %s", result.stderr.strip()[-500:])
+            return None
+        return output_path
 
     def _cleanup_temp_files(self):
         """Remove temporary download directory."""

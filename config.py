@@ -37,7 +37,8 @@ class Config:
     # Embedding-based key moment detection
     EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "models/gemini-embedding-001")
     EMBEDDING_DIMENSIONS: int = int(os.getenv("EMBEDDING_DIMENSIONS", "768"))
-    SNAP_TO_SCENE_CUTS: bool = os.getenv("SNAP_TO_SCENE_CUTS", "true").lower() in ("true", "1", "yes")
+    # Off by default: scene detection decodes the whole video with OpenCV, too heavy for 512 MB hosts
+    SNAP_TO_SCENE_CUTS: bool = os.getenv("SNAP_TO_SCENE_CUTS", "false").lower() in ("true", "1", "yes")
     # Gemini-derived topic for clip key-moment relevance (title + opening transcript excerpt)
     TOPIC_USE_GEMINI: bool = os.getenv("TOPIC_USE_GEMINI", "true").lower() in ("true", "1", "yes")
     TOPIC_GEMINI_OPENING_SEC: float = float(os.getenv("TOPIC_GEMINI_OPENING_SEC", "120"))

@@ -1,7 +1,6 @@
 Flask
 flask_cors
 yt-dlp[default,curl-cffi]
-moviepy
 google-generativeai
 python-dotenv
 chardet

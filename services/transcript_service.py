@@ -4,13 +4,13 @@ Single Responsibility: Get transcript from URL or file only.
 """
 import os
 import re
+import subprocess
 import tempfile
 from typing import Optional
 
 import chardet
 import pysrt
 import yt_dlp
-from moviepy import VideoFileClip
 
 import google.generativeai as genai
 
@@ -57,9 +57,12 @@ class TranscriptService(TranscriptProvider):
     def get_transcript_from_file(self, file_path: str) -> Optional[str]:
         """Extract transcript from video file via Gemini audio transcription."""
         try:
-            video = VideoFileClip(file_path)
+            # 16 kHz mono is plenty for speech and keeps the upload small; ffmpeg avoids loading audio into RAM
             audio_path = os.path.join(tempfile.gettempdir(), "temp_audio.wav")
-            video.audio.write_audiofile(audio_path)
+            subprocess.run(
+                ["ffmpeg", "-y", "-loglevel", "error", "-i", file_path, "-vn", "-ac", "1", "-ar", "16000", audio_path],
+                check=True, capture_output=True,
+            )
 
             audio_file = genai.upload_file(audio_path, mime_type="audio/wav")
             model = genai.GenerativeModel(Config.GEMINI_MODEL)
