@@ -8,8 +8,11 @@ RUN apt-get update \
 # Deno: JS runtime yt-dlp uses to solve YouTube's player challenges
 COPY --from=denoland/deno:bin /deno /usr/local/bin/deno
 
+# MALLOC_ARENA_MAX: stop glibc growing per-thread heaps; DENO_V8_FLAGS: cap Deno's heap when yt-dlp runs it
 ENV PYTHONUNBUFFERED=1 \
-    PORT=10000
+    PORT=10000 \
+    MALLOC_ARENA_MAX=2 \
+    DENO_V8_FLAGS=--max-old-space-size=192
 WORKDIR /app
 
 COPY requirements.txt .

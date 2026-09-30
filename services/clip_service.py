@@ -3,6 +3,7 @@ Clip generation service.
 Single Responsibility: Orchestrate video clip creation from YouTube URL.
 Delegates to VideoSummarizer for core logic.
 """
+import threading
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -11,6 +12,9 @@ from config import Config
 from logger import get_logger
 
 logger = get_logger()
+
+# One clip at a time: each job downloads a full video and runs ffmpeg, too much to overlap in 512 MB
+_clip_lock = threading.Lock()
 
 
 class ClipService:
@@ -36,5 +40,6 @@ class ClipService:
             transcript_service=self._transcript_service,
             summary_service=self._summary_service,
         )
-        result_path, clip_transcript = summarizer.generate_highlight_video(url, duration)
+        with _clip_lock:
+            result_path, clip_transcript = summarizer.generate_highlight_video(url, duration)
         return result_path, clip_transcript or ""

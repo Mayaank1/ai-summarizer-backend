@@ -20,6 +20,9 @@ logger = get_logger()
 
 _cookie_copy: Optional[str] = None
 
+# Cap resolution: smaller downloads and cheaper ffmpeg re-encoding on low-memory hosts
+_VIDEO_FORMAT = "best[ext=mp4][height<=480]/best[ext=mp4]/best"
+
 
 def _get_cookie_file() -> Optional[str]:
     """
@@ -91,7 +94,7 @@ def _download_video_with_subs(
 ) -> Tuple[Optional[Path], Optional[Path], Optional[str], Optional[float]]:
     """Try video + subtitles in one request."""
     ydl_opts = {
-        "format": "best[ext=mp4]",
+        "format": _VIDEO_FORMAT,
         "outtmpl": str(base_filename) + ".%(ext)s",
         "writeautomaticsub": True,
         "subtitleslangs": ["en"],
@@ -120,7 +123,7 @@ def _download_video_only(
 ) -> Tuple[Optional[Path], Optional[str], Optional[float]]:
     """Download video only (no subtitles) - works when subtitle fetch fails (e.g. 429)."""
     ydl_opts = {
-        "format": "best[ext=mp4]",
+        "format": _VIDEO_FORMAT,
         "outtmpl": str(base_filename) + ".%(ext)s",
         "writesubtitles": False,
         "writeautomaticsub": False,

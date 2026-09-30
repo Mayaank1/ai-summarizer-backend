@@ -12,7 +12,7 @@ import chardet
 import pysrt
 
 from config import Config
-from logger import get_logger
+from logger import get_logger, log_memory
 from services.key_moment_service import select_key_moments
 from services.youtube_download_service import download_youtube
 
@@ -243,7 +243,7 @@ class VideoSummarizer:
                 [
                     "ffmpeg", "-y", "-loglevel", "error",
                     "-ss", f"{start:.3f}", "-i", str(video_path), "-t", f"{end - start:.3f}",
-                    "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p", "-threads", "2",
+                    "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p", "-threads", "1",
                     "-c:a", "aac", "-ar", "44100", "-ac", "2",
                     str(segment_path),
                 ],
@@ -296,6 +296,7 @@ class VideoSummarizer:
             video_path, subtitle_path, title, video_duration = download_youtube(
                 url, str(self.temp_dir), transcript_service=self._transcript_service
             )
+            log_memory("download")
             if not video_path:
                 return None, ""
             if video_duration is not None and duration > video_duration:
@@ -312,6 +313,7 @@ class VideoSummarizer:
                 subtitle_path, duration, topic=title
             )
             clip_transcript = _get_transcript_for_regions(subtitle_path, regions)
+            log_memory("key moment selection")
 
             if not regions:
                 return None, ""
@@ -321,6 +323,7 @@ class VideoSummarizer:
 
             output_filename = f"summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp4"
             result_path = self._build_highlight_video(video_path, regions, output_filename)
+            log_memory("cut and join")
 
             self._cleanup_temp_files()
             return result_path, clip_transcript
