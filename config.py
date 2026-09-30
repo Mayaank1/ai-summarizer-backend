@@ -18,7 +18,8 @@ class Config:
     OUTPUT_FOLDER: str = os.getenv("OUTPUT_FOLDER", "output")
     DOWNLOADS_FOLDER: str = os.getenv("DOWNLOADS_FOLDER", "downloads")
     ALLOWED_EXTENSIONS: set = frozenset({"mp4"})
-    BASE_URL: str = os.getenv("BASE_URL", "http://localhost:5000")
+    # Public URL for clip links; empty = derive from the incoming request
+    BASE_URL: str = os.getenv("BASE_URL", "")
     # Netscape-format YouTube cookies so yt-dlp isn't bot-blocked on cloud hosts (Render secret files mount here)
     YTDLP_COOKIES_FILE: str = os.getenv("YTDLP_COOKIES_FILE", "/etc/secrets/cookies.txt")
 

@@ -9,6 +9,7 @@ from typing import Optional
 
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config import Config
 from logger import get_logger
@@ -23,6 +24,8 @@ from services import (
 
 # --- App setup ---
 app = Flask(__name__)
+# Trust Render's proxy headers so request.url_root is the public https URL
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 CORS(app)
 app.config["MAX_CONTENT_LENGTH"] = Config.MAX_UPLOAD_SIZE_MB * 1024 * 1024
 Config.ensure_directories()
@@ -226,7 +229,8 @@ def handle_summarize_video():
     if not result_path:
         return jsonify({"error": "Failed to create summary video. Check the logs."}), 500
 
-    video_url = f"{Config.BASE_URL}/{Config.OUTPUT_FOLDER}/{result_path.name}"
+    base_url = (Config.BASE_URL or request.url_root).rstrip("/")
+    video_url = f"{base_url}/{Config.OUTPUT_FOLDER}/{result_path.name}"
 
     summary = ""
     if clip_transcript:
